@@ -1,6 +1,7 @@
 require "open-uri"
 require "nokogiri"
 require 'json'
+
 class Api::V1::FrasesController < Api::V1::BaseController
   before_action :require_authentication!
 
@@ -19,21 +20,22 @@ class Api::V1::FrasesController < Api::V1::BaseController
     # tem que ser recursivo!
     if Frase.friendly.where('tag': params[:id]).present?
       frase = Frase.friendly.find(params[:id])
+
     else
       url = "http://quotes.toscrape.com/tag/#{params[:id]}/"
       
       html_file = open(url).read
       html_doc = Nokogiri::HTML(html_file)
-      # frase = JSON.generate(html_doc)
       
       frase = Frase.create(
         "tag": params[:id],
-        "quote": html_doc.search('.quote .text')&.first&.text,
+        "quote": html_doc.search('.quote .text')&.first&.text.gsub("“","").gsub("”",""),
         "author": html_doc.search('.quote .author')&.first&.text,
-        "about": html_doc.search('.quote span a')&.first,
-        "tags": html_doc.search('.quote .tags a')&.text&.split
+        "about": "http://quotes.toscrape.com#{html_doc.search('.quote span a')&.first&.attributes["href"]&.value}",
+        "tags": html_doc.search('.quote .tags .keywords')&.first&.attributes["content"]&.value&.split(","),
         )
-        frase.save
+      frase.save
+        
       end
       render json: { 
         "quotes": [
